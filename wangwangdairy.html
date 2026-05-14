@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>主子日記 - 情緒管理 App (v4)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body {
+      font-family: 'Noto Sans JP', 'Noto Sans TC', sans-serif;
+      background: linear-gradient(180deg, #BAE6FD 0%, #FFFFFF 100%);
+      min-height: 100vh;
+      color: #475569;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.1);
+    }
+
+    .diary-dot-glow {
+      position: relative;
+    }
+
+    .diary-dot-glow::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7DD3FC, #C084FC);
+      filter: blur(4px);
+      z-index: -1;
+      opacity: 0.7;
+    }
+
+    .nav-active {
+      color: #0EA5E9;
+      text-shadow: 0 0 8px rgba(14, 165, 233, 0.3);
+    }
+
+    .nav-active i {
+      background: linear-gradient(135deg, #7DD3FC, #C084FC);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .star-yellow { color: #FBBF24; }
+    .star-gray { color: #E2E8F0; }
+
+    input, textarea {
+      background: rgba(255, 255, 255, 0.5) !important;
+      border: 1px solid rgba(255, 255, 255, 0.8) !important;
+      border-radius: 15px !important;
+    }
+
+    .animate-fade-in {
+      animation: fadeIn .25s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #draw-canvas {
+      touch-action: none;
+    }
+    
+    .preview-media-img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      border-radius: 15px;
+      background: rgba(255,255,255,0.5);
+    }
+  </style>
+</head>
+<body class="pb-24">
+  <div class="w-full pt-1 px-2 flex justify-center">
+    <img src="https://i.postimg.cc/dVmfbFhQ/banner4.png" alt="頂部 Banner" class="w-4/5 max-w-md object-contain block" style="max-width:min(28rem,100%)">
+  </div>
+
+  <main id="app" class="px-6 pt-0 max-w-md mx-auto">
+    <section id="view-calendar" class="space-y-6">
+      <div class="glass-card p-6">
+        <div class="flex justify-between items-center mb-6">
+          <button id="prev-month-btn" class="text-sky-400" aria-label="上個月"><i class="fa-solid fa-chevron-left"></i></button>
+          <h2 id="calendar-title" class="text-xl font-bold tracking-tighter"></h2>
+          <button id="next-month-btn" class="text-sky-400" aria-label="下個月"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 mb-2 uppercase">
+          <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+        </div>
+        <div id="calendar-grid" class="grid grid-cols-7 gap-2 text-center"></div>
+      </div>
+
+      <div id="quick-preview" class="hidden animate-fade-in space-y-4">
+        <div class="glass-card p-6 border-l-4 border-sky-300 space-y-4">
+          <div class="flex justify-between items-center">
+            <span id="preview-date" class="text-xs font-bold text-sky-500"></span>
+            <div id="preview-stars" class="flex gap-1 text-xs"></div>
+          </div>
+          
+          <div class="space-y-2">
+            <p id="preview-text" class="text-sm text-slate-700 font-medium"></p>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="p-2 bg-green-50/50 rounded-xl">
+                <span class="text-[10px] text-green-500 font-bold block">開心的事</span>
+                <p id="preview-happy" class="text-xs text-slate-600 italic"></p>
+              </div>
+              <div class="p-2 bg-rose-50/50 rounded-xl">
+                <span class="text-[10px] text-rose-500 font-bold block">難過的事</span>
+                <p id="preview-sad" class="text-xs text-slate-600 italic"></p>
+              </div>
+            </div>
+          </div>
+
+          <div id="preview-media-section" class="hidden space-y-3 pt-2 border-t border-white/50">
+            <div id="box-preview-photo" class="hidden">
+              <span class="text-[10px] text-slate-400 font-bold block mb-1">上載相片</span>
+              <img id="img-preview-photo" src="" class="preview-media-img">
+            </div>
+            <div id="box-preview-drawing" class="hidden">
+              <span class="text-[10px] text-slate-400 font-bold block mb-1">主子手寫/繪圖</span>
+              <img id="img-preview-drawing" src="" class="preview-media-img">
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card p-6 flex gap-4 items-start shadow-sky-100 shadow-lg">
+          <div class="w-12 h-12 flex-shrink-0 bg-sky-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+            <img id="captain-avatar" src="https://i.postimg.cc/JzMGbqmn/icon.png" alt="小狗隊長" class="w-8 h-8">
+          </div>
+          <div class="space-y-1">
+            <h4 class="text-xs font-bold text-sky-600">小狗隊長建議 (AI)</h4>
+            <p id="ai-suggestion-text" class="text-xs leading-relaxed text-slate-500"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-diary" class="hidden space-y-6">
+      <div class="glass-card p-8">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-lg font-bold text-slate-700">主子日記</h3>
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-widest" id="diary-current-date">Today</span>
+        </div>
+
+        <div class="mb-4">
+          <label class="text-[10px] font-bold text-sky-400 uppercase tracking-widest ml-2 mb-2 block">日記日期</label>
+          <input id="diary-date-input" type="date" class="w-full p-3 text-sm focus:outline-none">
+        </div>
+
+        <div class="space-y-6">
+          <div class="text-center">
+            <p class="text-xs font-bold text-slate-400 mb-3">今天的心態分</p>
+            <div id="star-rating" class="flex justify-center gap-3 text-3xl">
+              <i class="fa-solid fa-star star-gray cursor-pointer" data-val="1"></i>
+              <i class="fa-solid fa-star star-gray cursor-pointer" data-val="2"></i>
+              <i class="fa-solid fa-star star-gray cursor-pointer" data-val="3"></i>
+              <i class="fa-solid fa-star star-gray cursor-pointer" data-val="4"></i>
+              <i class="fa-solid fa-star star-gray cursor-pointer" data-val="5"></i>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10px] font-bold text-sky-400 uppercase tracking-widest ml-2 mb-2 block">今日發生什麼</label>
+            <textarea id="input-event" class="w-full p-4 text-sm focus:outline-none" rows="3" placeholder="在此填入..."></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-[10px] font-bold text-green-400 uppercase tracking-widest ml-2 mb-2 block">開心的事</label>
+              <input id="input-happy" type="text" class="w-full p-3 text-xs focus:outline-none" placeholder="開心的事...">
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-rose-400 uppercase tracking-widest ml-2 mb-2 block">難過的事</label>
+              <input id="input-sad" type="text" class="w-full p-3 text-xs focus:outline-none" placeholder="難過的事...">
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="add-photo-btn" class="flex-1 py-3 glass-card bg-white/40 text-[10px] font-bold text-slate-500 hover:bg-white/60 transition">
+              <i class="fa-solid fa-image mr-1"></i> 加入相片
+            </button>
+            <button id="add-draw-btn" class="flex-1 py-3 glass-card bg-white/40 text-[10px] font-bold text-slate-500 hover:bg-white/60 transition">
+              <i class="fa-solid fa-paint-brush mr-1"></i> 加入繪圖
+            </button>
+          </div>
+
+          <input id="photo-file-input" type="file" accept="image/*" class="hidden">
+          <div id="photo-preview-box" class="hidden glass-card p-3 relative pr-10">
+             <button type="button" id="photo-clear-btn" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-slate-200/90 text-slate-600 text-lg font-bold leading-none flex items-center justify-center hover:bg-rose-100 hover:text-rose-500 transition" title="取消圖片" aria-label="取消已上傳的圖片">×</button>
+             <span class="text-xs text-slate-500">已選取圖片預覽</span>
+             <img id="edit-photo-preview" class="preview-media-img mt-2" alt="">
+          </div>
+
+          <div id="draw-panel" class="hidden glass-card p-3 space-y-2">
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-500">畫筆顏色</label>
+              <input id="draw-color-input" type="color" value="#0ea5e9" class="w-10 h-8 p-0 border-0 bg-transparent">
+              <button id="draw-clear-btn" class="text-xs font-bold text-slate-500 underline">清除</button>
+            </div>
+            <canvas id="draw-canvas" class="w-full rounded-xl bg-white/70 border border-white/80" height="180"></canvas>
+          </div>
+
+          <button id="save-diary-btn" class="w-full py-4 bg-gradient-to-r from-sky-400 to-indigo-400 text-white rounded-full font-bold shadow-lg shadow-sky-200 active:scale-95 transition-all">
+            儲存今日回憶
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-goal" class="hidden space-y-6">
+      <div class="glass-card p-6 space-y-4">
+        <h3 class="font-bold text-slate-700">目標</h3>
+        <div class="flex gap-2">
+          <input id="goal-input" type="text" class="flex-1 p-4 text-sm focus:outline-none" placeholder="新增目標（可輸入文字或網址）">
+          <button type="button" id="goal-add-btn" class="w-12 h-12 bg-sky-500 text-white rounded-full shadow-lg flex-shrink-0 flex items-center justify-center" aria-label="新增目標">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+        <div id="goal-list" class="space-y-3"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="fixed bottom-6 left-6 right-6 h-20 glass-card flex justify-around items-center px-4 z-50">
+    <button class="nav-item nav-active flex flex-col items-center gap-1" data-view="calendar">
+      <i class="fa-solid fa-calendar-alt text-xl"></i>
+      <span class="text-[10px] font-bold">月曆</span>
+    </button>
+    <button class="nav-item text-slate-300 flex flex-col items-center gap-1" data-view="diary">
+      <i class="fa-solid fa-book-open text-xl"></i>
+      <span class="text-[10px] font-bold">我的日記</span>
+    </button>
+    <button class="nav-item text-slate-300 flex flex-col items-center gap-1" data-view="goal">
+      <i class="fa-solid fa-bullseye text-xl"></i>
+      <span class="text-[10px] font-bold">目標</span>
+    </button>
+  </nav>
+
+  <script>
+    let diaries = JSON.parse(localStorage.getItem('puppy_diaries')) || {};
+    let goals = JSON.parse(localStorage.getItem('puppy_goals')) || [];
+    let currentRating = 0;
+    let displayDate = new Date();
+    let selectedDateKey = getLocalDateKey(new Date());
+    let drawState = { active: false, drawing: false, color: '#0ea5e9' };
+
+    window.onload = () => {
+      bindEvents();
+      renderCalendar();
+      renderGoals();
+      initDiaryRating();
+      hydrateDiaryForm(selectedDateKey);
+      showPreview(selectedDateKey);
+    };
+
+    function bindEvents() {
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', () => switchView(btn.dataset.view));
+      });
+
+      document.getElementById('prev-month-btn').addEventListener('click', () => changeMonth(-1));
+      document.getElementById('next-month-btn').addEventListener('click', () => changeMonth(1));
+      document.getElementById('save-diary-btn').addEventListener('click', saveDiary);
+
+      document.getElementById('add-photo-btn').addEventListener('click', () => {
+        document.getElementById('photo-file-input').click();
+      });
+      document.getElementById('photo-file-input').addEventListener('change', handlePhotoSelect);
+      document.getElementById('photo-clear-btn').addEventListener('click', clearPhoto);
+
+      document.getElementById('goal-add-btn').addEventListener('click', addGoal);
+
+      document.getElementById('add-draw-btn').addEventListener('click', toggleDrawPanel);
+      document.getElementById('draw-clear-btn').addEventListener('click', clearDrawing);
+
+      document.getElementById('diary-date-input').addEventListener('change', (e) => {
+        if (!e.target.value) return;
+        selectedDateKey = e.target.value;
+        hydrateDiaryForm(selectedDateKey);
+        renderCalendar();
+      });
+
+      initDrawCanvas();
+    }
+
+    function getLocalDateKey(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function switchView(viewId) {
+      document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(`view-${viewId}`).classList.remove('hidden');
+      document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.remove('nav-active');
+        n.classList.add('text-slate-300');
+        if (n.dataset.view === viewId) {
+          n.classList.add('nav-active');
+          n.classList.remove('text-slate-300');
+        }
+      });
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const title = document.getElementById('calendar-title');
+      grid.innerHTML = '';
+      const year = displayDate.getFullYear();
+      const month = displayDate.getMonth();
+      title.innerText = `${year}年 ${month + 1}月`;
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isSelected = dateStr === selectedDateKey;
+        const btn = document.createElement('button');
+        btn.className = `h-10 w-10 text-xs font-bold rounded-full transition-all flex items-center justify-center ${isSelected ? 'diary-dot-glow text-white' : 'text-slate-500 hover:bg-sky-50'}`;
+        btn.innerText = d;
+        btn.addEventListener('click', () => {
+          selectedDateKey = dateStr;
+          renderCalendar();
+          showPreview(dateStr);
+        });
+        grid.appendChild(btn);
+      }
+    }
+
+    function changeMonth(step) {
+      displayDate.setMonth(displayDate.getMonth() + step);
+      renderCalendar();
+    }
+
+    async function showPreview(dateKey) {
+      const data = diaries[dateKey];
+      const preview = document.getElementById('quick-preview');
+      preview.classList.remove('hidden');
+      document.getElementById('preview-date').innerText = dateKey;
+
+      if (!data) {
+        document.getElementById('preview-stars').innerHTML = '<span class="text-slate-300">☆☆☆☆☆</span>';
+        document.getElementById('preview-text').innerText = '主子今日太忙沒有寫日記喔～';
+        document.getElementById('preview-happy').innerText = '-';
+        document.getElementById('preview-sad').innerText = '-';
+        document.getElementById('preview-media-section').classList.add('hidden');
+        document.getElementById('ai-suggestion-text').innerText = '期待你回來分享心情汪！';
+        return;
+      }
+
+      // 文字內容顯示
+      document.getElementById('preview-text').innerText = data.event || '（無內容）';
+      document.getElementById('preview-happy').innerText = data.happy || '無';
+      document.getElementById('preview-sad').innerText = data.sad || '無';
+      
+      // 星星顯示
+      let starsHtml = '';
+      for (let i = 1; i <= 5; i++) starsHtml += `<i class="fa-solid fa-star ${i <= data.rating ? 'star-yellow' : 'star-gray'}"></i>`;
+      document.getElementById('preview-stars').innerHTML = starsHtml;
+
+      // 媒體預覽處理
+      const mediaSection = document.getElementById('preview-media-section');
+      const photoBox = document.getElementById('box-preview-photo');
+      const drawBox = document.getElementById('box-preview-drawing');
+      
+      let hasMedia = false;
+      if (data.photo) {
+        document.getElementById('img-preview-photo').src = data.photo;
+        photoBox.classList.remove('hidden');
+        hasMedia = true;
+      } else photoBox.classList.add('hidden');
+
+      if (data.drawing) {
+        document.getElementById('img-preview-drawing').src = data.drawing;
+        drawBox.classList.remove('hidden');
+        hasMedia = true;
+      } else drawBox.classList.add('hidden');
+
+      mediaSection.classList.toggle('hidden', !hasMedia);
+
+      // AI 邏輯
+      const aiSuggest = document.getElementById('ai-suggestion-text');
+      if (data.rating >= 4) aiSuggest.innerText = '今日は最高だね！看到這張照片/圖畫，主子也感覺到你的快樂了！';
+      else if (data.rating <= 2) aiSuggest.innerText = 'ちょっと大変だったかな... 沒關係，主子陪著你。看看這些紀錄，明天會更好！';
+      else aiSuggest.innerText = 'お疲れ様！平凡的一天也有它的美。早點休息汪！';
+    }
+
+    function hydrateDiaryForm(dateKey) {
+      const record = diaries[dateKey] || { rating: 0, event: '', happy: '', sad: '', photo: '', drawing: '' };
+      document.getElementById('diary-current-date').innerText = dateKey;
+      document.getElementById('diary-date-input').value = dateKey;
+      document.getElementById('input-event').value = record.event || '';
+      document.getElementById('input-happy').value = record.happy || '';
+      document.getElementById('input-sad').value = record.sad || '';
+
+      if (record.photo) {
+        document.getElementById('edit-photo-preview').src = record.photo;
+        document.getElementById('photo-preview-box').classList.remove('hidden');
+      } else document.getElementById('photo-preview-box').classList.add('hidden');
+
+      currentRating = Number(record.rating || 0);
+      document.querySelectorAll('#star-rating i').forEach(s => {
+        const val = Number(s.dataset.val);
+        s.classList.toggle('star-yellow', val <= currentRating);
+        s.classList.toggle('star-gray', val > currentRating);
+      });
+
+      const canvas = document.getElementById('draw-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (record.drawing) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        img.src = record.drawing;
+      }
+    }
+
+    function initDiaryRating() {
+      document.querySelectorAll('#star-rating i').forEach(star => {
+        star.addEventListener('click', (e) => {
+          currentRating = parseInt(e.currentTarget.dataset.val, 10);
+          document.querySelectorAll('#star-rating i').forEach(s => {
+            const val = Number(s.dataset.val);
+            s.classList.toggle('star-yellow', val <= currentRating);
+            s.classList.toggle('star-gray', val > currentRating);
+          });
+        });
+      });
+    }
+
+    function saveDiary() {
+      const event = document.getElementById('input-event').value.trim();
+      const happy = document.getElementById('input-happy').value.trim();
+      const sad = document.getElementById('input-sad').value.trim();
+      if (!event || currentRating === 0) return alert('請填寫心情與發生內容！');
+
+      const targetDate = selectedDateKey;
+      const prev = diaries[targetDate] || {};
+      diaries[targetDate] = { 
+        rating: currentRating, 
+        event, happy, sad, 
+        photo: prev.photo || '', 
+        drawing: prev.drawing || '' 
+      };
+      
+      localStorage.setItem('puppy_diaries', JSON.stringify(diaries));
+      alert('回憶儲存成功汪！');
+      renderCalendar();
+      showPreview(targetDate);
+      switchView('calendar');
+    }
+
+    function parseFirstUrl(text) {
+      const m = String(text || '').match(/https?:\/\/[^\s]+/);
+      return m ? m[0] : null;
+    }
+
+    function renderGoals() {
+      const list = document.getElementById('goal-list');
+      list.innerHTML = '';
+      goals.forEach((g, idx) => {
+        const url = parseFirstUrl(g.text);
+        const row = document.createElement('div');
+        row.className = 'glass-card p-4 flex items-start gap-3 animate-fade-in';
+
+        const starBox = document.createElement('button');
+        starBox.type = 'button';
+        starBox.className = 'w-10 h-10 rounded-xl border-2 border-sky-100 flex items-center justify-center flex-shrink-0 bg-white/50';
+        starBox.setAttribute('aria-label', g.done ? '標為未完成' : '標為完成');
+        starBox.innerHTML = `<i class="fa-solid fa-star ${g.done ? 'star-yellow' : 'star-gray'} text-lg"></i>`;
+        starBox.addEventListener('click', () => {
+          goals[idx].done = !goals[idx].done;
+          localStorage.setItem('puppy_goals', JSON.stringify(goals));
+          renderGoals();
+        });
+
+        const mid = document.createElement('div');
+        mid.className = 'flex-1 min-w-0 space-y-1';
+        const label = document.createElement('div');
+        label.className = `text-sm font-medium break-words ${g.done ? 'line-through text-slate-400' : 'text-slate-700'}`;
+        label.textContent = g.text;
+        mid.appendChild(label);
+        if (url) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.className = 'inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-sky-500 text-white text-xs font-bold hover:bg-sky-600 transition';
+          a.textContent = '開啟連結';
+          mid.appendChild(a);
+        }
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'text-slate-300 hover:text-rose-400 p-1 flex-shrink-0';
+        del.setAttribute('aria-label', '刪除目標');
+        del.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        del.addEventListener('click', () => {
+          goals.splice(idx, 1);
+          localStorage.setItem('puppy_goals', JSON.stringify(goals));
+          renderGoals();
+        });
+
+        row.appendChild(starBox);
+        row.appendChild(mid);
+        row.appendChild(del);
+        list.appendChild(row);
+      });
+    }
+
+    function addGoal() {
+      const input = document.getElementById('goal-input');
+      const t = input.value.trim();
+      if (!t) return;
+      goals.push({ text: t, done: false });
+      localStorage.setItem('puppy_goals', JSON.stringify(goals));
+      input.value = '';
+      renderGoals();
+    }
+
+    function clearPhoto() {
+      const existing = diaries[selectedDateKey] || {};
+      diaries[selectedDateKey] = { ...existing, photo: '' };
+      localStorage.setItem('puppy_diaries', JSON.stringify(diaries));
+      document.getElementById('photo-preview-box').classList.add('hidden');
+      document.getElementById('photo-file-input').value = '';
+      const img = document.getElementById('edit-photo-preview');
+      img.removeAttribute('src');
+    }
+
+    function handlePhotoSelect(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        const existing = diaries[selectedDateKey] || { rating: currentRating };
+        diaries[selectedDateKey] = { ...existing, photo: dataUrl };
+        document.getElementById('edit-photo-preview').src = dataUrl;
+        document.getElementById('photo-preview-box').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function toggleDrawPanel() {
+      const panel = document.getElementById('draw-panel');
+      drawState.active = !drawState.active;
+      panel.classList.toggle('hidden', !drawState.active);
+    }
+
+    function initDrawCanvas() {
+      const canvas = document.getElementById('draw-canvas');
+      const ctx = canvas.getContext('2d');
+      const getPoint = (ev) => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      };
+      canvas.addEventListener('pointerdown', (ev) => {
+        drawState.drawing = true;
+        const p = getPoint(ev);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      });
+      canvas.addEventListener('pointermove', (ev) => {
+        if (!drawState.drawing) return;
+        const p = getPoint(ev);
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = document.getElementById('draw-color-input').value;
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      });
+      const stop = () => {
+        if (!drawState.drawing) return;
+        drawState.drawing = false;
+        const existing = diaries[selectedDateKey] || { rating: currentRating };
+        diaries[selectedDateKey] = { ...existing, drawing: canvas.toDataURL('image/png') };
+      };
+      canvas.addEventListener('pointerup', stop);
+      canvas.addEventListener('pointerleave', stop);
+    }
+
+    function clearDrawing() {
+      const canvas = document.getElementById('draw-canvas');
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+      const existing = diaries[selectedDateKey] || {};
+      diaries[selectedDateKey] = { ...existing, drawing: '' };
+    }
+
+  </script>
+</body>
+</html>
